@@ -120,6 +120,25 @@ object LsfgVkManager {
             parseBool(container.getExtra(EXTRA_ARMED, "false")) &&
             isDllAvailable(container)
 
+    fun layerDir(context: Context, version: String): File = File(File(context.filesDir, LAYERS_DIR), version)
+
+    fun installedLayerVersions(context: Context): List<String> =
+        File(context.filesDir, LAYERS_DIR).listFiles().orEmpty()
+            .filter { it.isDirectory && LAYER_VERSION_RE.matches(it.name) && File(it, LIB_FILENAME).isFile }
+            .map { it.name }
+
+    /** The layer build pinned to this container by a support card, or null for the bundled layer. */
+    private fun pinnedLayer(context: Context, container: Container): Pair<String, File>? {
+        val version = container.getExtra(EXTRA_LAYER_VERSION, "").trim()
+        if (!LAYER_VERSION_RE.matches(version)) return null
+        val dir = layerDir(context, version)
+        if (!File(dir, LIB_FILENAME).isFile) {
+            Timber.tag(TAG).w("Pinned LSFG layer %s is not installed; using the bundled layer", version)
+            return null
+        }
+        return version to dir
+    }
+
     /** Whether Lossless.dll is available via Steam install or a manually selected path. */
     @JvmStatic
     fun isDllAvailable(container: Container? = null): Boolean =

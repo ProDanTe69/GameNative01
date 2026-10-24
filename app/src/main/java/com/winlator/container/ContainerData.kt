@@ -117,6 +117,8 @@ data class ContainerData(
     // LSFG Vulkan frame generation
     /** Whether LSFG frame generation is enabled for this container */
     val lsfgEnabled: Boolean = false,
+    val windowsVrEnabled: Boolean = false,
+    val openCompositeEnabled: Boolean = false,
     /** URI string of a manually selected Lossless.dll (fallback when Steam auto-discovery fails) */
     val lsfgCustomDllPath: String = "",
     /** Whether bionic-fg AI frame generation is enabled for this container */
@@ -201,6 +203,8 @@ data class ContainerData(
                     "sharpnessDenoise" to state.sharpnessDenoise,
                     "vibrationIntensity" to state.vibrationIntensity,
                     "lsfgEnabled" to state.lsfgEnabled,
+                    "windowsVrEnabled" to state.windowsVrEnabled,
+                    "openCompositeEnabled" to state.openCompositeEnabled,
                     "lsfgCustomDllPath" to state.lsfgCustomDllPath,
                 )
             },
@@ -282,6 +286,8 @@ data class ContainerData(
                     sharpnessDenoise = (savedMap["sharpnessDenoise"] as? Int) ?: 100,
                     vibrationIntensity = (savedMap["vibrationIntensity"] as? Int) ?: 100,
                     lsfgEnabled = (savedMap["lsfgEnabled"] as? Boolean) ?: false,
+                    windowsVrEnabled = (savedMap["windowsVrEnabled"] as? Boolean) ?: false,
+                    openCompositeEnabled = (savedMap["openCompositeEnabled"] as? Boolean) ?: false,
                     lsfgCustomDllPath = (savedMap["lsfgCustomDllPath"] as? String) ?: "",
                 )
             },
