@@ -1,8 +1,11 @@
 package app.gamenative.utils
 
+import android.app.ActivityManager
 import android.content.Context
+import android.os.Build
 import androidx.compose.ui.graphics.Color
 import app.gamenative.BuildConfig
+import app.gamenative.MainActivity
 import app.gamenative.PrefManager
 import app.gamenative.R
 import com.winlator.box86_64.Box86_64PresetManager
@@ -12,6 +15,7 @@ import com.winlator.core.DefaultVersion
 import com.winlator.core.GPUInformation
 import com.winlator.core.KeyValueSet
 import com.winlator.fexcore.FEXCorePresetManager
+import com.winlator.winhandler.WinHandler
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.Dispatchers
@@ -65,11 +69,19 @@ object BestConfigService {
         val missingComponents: List<String> = emptyList(),
     )
 
+    internal fun usesNativeBox64(wineVersion: String): Boolean =
+        !wineVersion.contains("arm64ec", ignoreCase = true)
+
+    internal fun usesWowBox64(wineVersion: String, emulator: String): Boolean =
+        wineVersion.contains("arm64ec", ignoreCase = true) &&
+            !emulator.equals("FEXCore", ignoreCase = true)
+
     /**
      * Fetches best configuration for a game.
      * Returns cached response if available, otherwise makes API call.
      */
     suspend fun fetchBestConfig(
+        context: Context,
         gameName: String,
         gpuName: String,
         gameStore: String,
@@ -90,7 +102,18 @@ object BestConfigService {
                 // Modern build can't run glibc containers — server should pick a config that
                 // doesn't require glibc when this is true.
                 put("modernBuild", BuildConfig.MODERN_ANDROID)
+                HardwareUtils.getSOCName()?.let { put("socModel", it) }
+                put("model", Build.MODEL)
+                put("androidSdk", Build.VERSION.SDK_INT)
+                put("androidVersion", Build.VERSION.RELEASE)
+                put("appVersionCode", BuildConfig.VERSION_CODE)
+                val memInfo = ActivityManager.MemoryInfo()
+                (context.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager)?.getMemoryInfo(memInfo)
+                if (memInfo.totalMem > 0) put("ramTotalMb", memInfo.totalMem / (1024L * 1024L))
+                GPUInformation.getVersion(context)?.takeIf { it.isNotBlank() }?.let { put("gpuDriverVersion", it) }
             }
+
+            PlayIntegrity.signingCertSha256?.let { requestBody.put("signingCertSha256", it) }
 
             val attestation = KeyAttestationHelper.getAttestationFields("https://api.gamenative.app")
             if (attestation != null) {
@@ -255,7 +278,7 @@ object BestConfigService {
             filteredJson.put("graphicsDriverVersion", ContainerUtils.WRAPPER_ADRENO_A12)
         }
 
-        if (BuildConfig.XR_BUILD) {
+        if (BuildConfig.XR_BUILD && MainActivity.isMetaQuest()) {
             val kvs = KeyValueSet(filteredJson.optString("graphicsDriverConfig", ""))
             val isTurnip = filteredJson.optString("graphicsDriverVersion", "").contains("turnip", ignoreCase = true) ||
                 kvs.get("version").contains("turnip", ignoreCase = true)
@@ -263,6 +286,12 @@ object BestConfigService {
                 kvs.put("adrenotoolsTurnip", "0")
                 filteredJson.put("graphicsDriverConfig", kvs.toString())
             }
+        }
+
+        if (BuildConfig.XR_BUILD) {
+            filteredJson.put("launchRealSteam", true)
+            filteredJson.put("launchBionicSteam", false)
+            filteredJson.put("steamType", Container.STEAM_TYPE_HEADLESS)
         }
 
         return filteredJson
@@ -419,7 +448,7 @@ object BestConfigService {
         }
 
         // Validate Box64 version (check separately based on container variant)
-        if (box64Version.isNotEmpty() && containerVariant.isNotEmpty()) {
+        if (usesNativeBox64(wineVersion) && box64Version.isNotEmpty() && containerVariant.isNotEmpty()) {
             val box64VersionsToCheck = when {
                 containerVariant.equals(Container.BIONIC, ignoreCase = true) -> availableBox64Bionic
                 containerVariant.equals(Container.GLIBC, ignoreCase = true) -> availableBox64Glibc
@@ -435,8 +464,8 @@ object BestConfigService {
         }
 
         // Validate WoWBox64 version (if wineVersion contains arm64ec)
-        if (wineVersion.contains("arm64ec", ignoreCase = true)) {
-            if (box64Version.isNotEmpty() && !ManifestComponentHelper.versionExists(box64Version, availableWowBox64) && emulator != "FEXCore") {
+        if (usesWowBox64(wineVersion, emulator)) {
+            if (box64Version.isNotEmpty() && !ManifestComponentHelper.versionExists(box64Version, availableWowBox64)) {
                 Timber.tag("BestConfigService").w("WoWBox64 version $box64Version not found")
                 missing.add("WoWBox64 $box64Version")
             }
@@ -658,7 +687,7 @@ object BestConfigService {
             }
         }
 
-        if (box64Version.isNotEmpty() && containerVariant.isNotEmpty()) {
+        if (usesNativeBox64(wineVersion) && box64Version.isNotEmpty() && containerVariant.isNotEmpty()) {
             val locallyAvailableBox64 = when {
                 containerVariant.equals(Container.BIONIC, ignoreCase = true) -> locallyAvailableBox64Bionic
                 containerVariant.equals(Container.GLIBC, ignoreCase = true) -> locallyAvailableBox64Glibc
@@ -672,7 +701,7 @@ object BestConfigService {
             }
         }
 
-        if (wineVersion.contains("arm64ec", ignoreCase = true) && emulator != "FEXCore") {
+        if (usesWowBox64(wineVersion, emulator)) {
             if (box64Version.isNotEmpty() && !ManifestComponentHelper.versionExists(box64Version, locallyAvailableWowBox64)) {
                 val entry = ManifestComponentHelper.findManifestEntryForVersion(box64Version, manifestWowBox64)
                 if (entry != null) {
@@ -959,8 +988,26 @@ object BestConfigService {
                 if (filteredJson.has("useLegacyDRM") && !filteredJson.isNull("useLegacyDRM")) {
                     resultMap["useLegacyDRM"] = filteredJson.optBoolean("useLegacyDRM", PrefManager.useLegacyDRM)
                 }
+                if (filteredJson.has("launchBionicSteam") && !filteredJson.isNull("launchBionicSteam")) {
+                    resultMap["launchBionicSteam"] = filteredJson.optBoolean("launchBionicSteam", false)
+                }
+                if (filteredJson.has("launchRealSteam") && !filteredJson.isNull("launchRealSteam")) {
+                    resultMap["launchRealSteam"] = filteredJson.optBoolean("launchRealSteam", false)
+                }
                 if (filteredJson.has("steamOfflineMode") && !filteredJson.isNull("steamOfflineMode")) {
                     resultMap["steamOfflineMode"] = filteredJson.optBoolean("steamOfflineMode", PrefManager.steamOfflineMode)
+                }
+                if (filteredJson.has("loadMods") && !filteredJson.isNull("loadMods")) {
+                    resultMap["loadMods"] = filteredJson.optBoolean("loadMods", PrefManager.loadMods)
+                }
+                if (filteredJson.has("epicOfflineMode") && !filteredJson.isNull("epicOfflineMode")) {
+                    resultMap["epicOfflineMode"] = filteredJson.optBoolean("epicOfflineMode", false)
+                }
+                if (filteredJson.has("unpackFiles") && !filteredJson.isNull("unpackFiles")) {
+                    resultMap["unpackFiles"] = filteredJson.optBoolean("unpackFiles", false)
+                }
+                if (filteredJson.has("suspendPolicy") && !filteredJson.isNull("suspendPolicy")) {
+                    resultMap["suspendPolicy"] = filteredJson.optString("suspendPolicy", "")
                 }
                 if (filteredJson.has("envVars") && !filteredJson.isNull("envVars")) {
                     var envVars = filteredJson.optString("envVars", PrefManager.envVars)
@@ -978,6 +1025,9 @@ object BestConfigService {
                 if (filteredJson.has("audioDriver") && !filteredJson.isNull("audioDriver")) {
                     resultMap["audioDriver"] = filteredJson.optString("audioDriver", PrefManager.audioDriver)
                 }
+                if (filteredJson.has("inputType") && !filteredJson.isNull("inputType")) {
+                    resultMap["inputType"] = filteredJson.optInt("inputType", WinHandler.PreferredInputApi.BOTH.ordinal)
+                }
                 if (filteredJson.has("wincomponents") && !filteredJson.isNull("wincomponents")) {
                     resultMap["wincomponents"] = filteredJson.optString("wincomponents", PrefManager.winComponents)
                 }
@@ -993,4 +1043,3 @@ object BestConfigService {
         }
     }
 }
-

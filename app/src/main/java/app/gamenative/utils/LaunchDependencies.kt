@@ -5,10 +5,12 @@ import app.gamenative.R
 import app.gamenative.data.GameSource
 import app.gamenative.utils.launchdependencies.BionicDefaultProtonDependency
 import app.gamenative.utils.launchdependencies.EpicOverlayDependency
+import app.gamenative.utils.launchdependencies.EpicSdkUpdateDependency
 import app.gamenative.utils.launchdependencies.GogScriptInterpreterDependency
 import app.gamenative.utils.launchdependencies.LaunchDependencyCallbacks
 import app.gamenative.utils.launchdependencies.LaunchDependency
 import app.gamenative.utils.launchdependencies.BionicSteamAssetsDependency
+import app.gamenative.utils.launchdependencies.RockstarHelperDependency
 import com.winlator.container.Container
 
 const val LOADING_PROGRESS_UNKNOWN: Float = -1f
@@ -24,7 +26,9 @@ class LaunchDependencies {
             BionicDefaultProtonDependency,
             GogScriptInterpreterDependency,
             EpicOverlayDependency,
+            EpicSdkUpdateDependency,
             BionicSteamAssetsDependency,
+            RockstarHelperDependency,
         )
 
         private var dependenciesProvider: () -> List<LaunchDependency> = { launchDependencies }

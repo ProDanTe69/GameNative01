@@ -1,6 +1,7 @@
 package app.gamenative.events
 
 import app.gamenative.data.GameSource
+import app.gamenative.ui.enums.LibraryTab
 import app.gamenative.ui.enums.Orientation
 import java.util.EnumSet
 
@@ -14,7 +15,7 @@ interface AndroidEvent<T> : Event<T> {
     data class KeyEvent(val event: android.view.KeyEvent) : AndroidEvent<Boolean>
     data class MotionEvent(val event: android.view.MotionEvent?) : AndroidEvent<Boolean>
     data object EndProcess : AndroidEvent<Unit>
-    data class ExternalGameLaunch(val appId: String) : AndroidEvent<Unit>
+    data class ExternalGameLaunch(val appId: String, val execArgs: String? = null) : AndroidEvent<Unit>
     data class PromptSaveContainerConfig(val appId: String) : AndroidEvent<Unit>
     data class ShowGameFeedback(val appId: String) : AndroidEvent<Unit>
     data class ShowLaunchingOverlay(val appName: String) : AndroidEvent<Unit>
@@ -25,8 +26,12 @@ interface AndroidEvent<T> : Event<T> {
     data class DownloadStatusChanged(val appId: Int, val isDownloading: Boolean) : AndroidEvent<Unit>
     data class PostInstallSyncStatusChanged(val appId: Int, val isSyncing: Boolean) : AndroidEvent<Unit>
     data class LibraryInstallStatusChanged(val appId: Int, val source: GameSource) : AndroidEvent<Unit>
+    data class PreferredCopyChanged(val appId: Int) : AndroidEvent<Unit>
     data class CustomGameImagesFetched(val appId: String) : AndroidEvent<Unit>
     data object RecommendationToggleChanged : AndroidEvent<Unit>
+    data object AllowedAppsLoaded : AndroidEvent<Unit>
+    data class HiddenGamesSettingChanged(val showHiddenGamesByDefault: Boolean) : AndroidEvent<Unit>
+    data class LibraryTabsChanged(val visibleTabs: List<LibraryTab>) : AndroidEvent<Unit>
     data class GOGAuthCodeReceived(val authCode: String) : AndroidEvent<Unit>
     data class EpicAuthCodeReceived(val authCode: String) : AndroidEvent<Unit>
     data object ServiceReady : AndroidEvent<Unit>

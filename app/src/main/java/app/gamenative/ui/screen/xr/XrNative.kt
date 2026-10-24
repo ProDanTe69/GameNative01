@@ -17,7 +17,7 @@ object XrNative {
     }
 
     /** Starts the OpenXR session on its own native thread. Returns an opaque session handle. */
-    external fun nativeCreate(activity: Context): Long
+    external fun nativeCreate(activity: Context, quadWidth: Int, quadHeight: Int, refreshRate: Float): Long
 
     /** Signals the native frame-loop thread to stop; does not block. */
     external fun nativeRequestStop(handle: Long)
@@ -44,6 +44,28 @@ object XrNative {
         outHandPoses: FloatArray,
         outFlags: BooleanArray,
     ): Boolean
+
+    external fun nativeWaitWindowsFrame(
+        handle: Long,
+        afterSerial: Long,
+        timeoutMs: Int,
+        outTiming: LongArray,
+        outViews: FloatArray,
+        outInput: FloatArray,
+        outFlags: IntArray,
+    ): Boolean
+
+    external fun nativeIsWindowsStereoActive(handle: Long): Boolean
+
+    external fun nativeApplyWindowsHaptic(
+        handle: Long,
+        hand: Int,
+        amplitude: Float,
+        duration: Long,
+        frequency: Float,
+    ): Boolean
+
+    external fun nativeSetWindowsOverlayVisible(handle: Long, visible: Boolean)
 
     /**
      * Hands off one PixelCopy'd frame of the game's actual rendered output (ARGB_8888) to be

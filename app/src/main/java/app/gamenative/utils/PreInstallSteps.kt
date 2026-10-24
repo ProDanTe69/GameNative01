@@ -6,7 +6,7 @@ import com.winlator.container.Container
 import java.io.File
 
 /**
- * Determines whether pre-install steps (VC Redist, GOG script interpreter) need to run
+ * Determines whether pre-install steps (GOG script interpreter, Ubisoft Connect) need to run
  * as Wine guest programs before the game launches. These installers require wine explorer
  * and cannot be run via execShellCommand.
  *
@@ -24,11 +24,8 @@ object PreInstallSteps {
     )
 
     private val steps: List<PreInstallStep> = listOf(
-        VcRedistStep,
-        PhysXStep,
-        OpenALStep,
-        XnaFrameworkStep,
         GogScriptInterpreterStep,
+        GogSupportCommandsStep,
         UbisoftConnectStep,
     )
 
@@ -50,7 +47,7 @@ object PreInstallSteps {
         val gameDir = getGameDir(container) ?: return emptyList()
         val gameDirPath = gameDir.absolutePath
 
-        if (containerVariantChanged) resetMarkers(gameDirPath)
+        if (markersStale(container, containerVariantChanged)) resetMarkers(gameDirPath)
 
         val commands = mutableListOf<PreInstallCommand>()
 
@@ -78,7 +75,24 @@ object PreInstallSteps {
             }
         }
 
+        if (commands.isEmpty()) touchPrefixStamp(container)
         return commands
+    }
+
+    /** Whether any pre-install step would run for this launch; asked before the session's server is chosen. */
+    fun hasPendingSteps(
+        container: Container,
+        appId: String,
+        gameSource: GameSource,
+        containerVariantChanged: Boolean,
+    ): Boolean {
+        val gameDir = getGameDir(container) ?: return false
+        val gameDirPath = gameDir.absolutePath
+        if (markersStale(container, containerVariantChanged, prefixMayNotExistYet = true)) resetMarkers(gameDirPath)
+        return currentSteps().any { step ->
+            step.appliesTo(container, gameSource, gameDirPath) &&
+                step.buildCommand(container, appId, gameSource, gameDir, gameDirPath) != null
+        }
     }
 
     fun markAllDone(container: Container) {
@@ -87,12 +101,42 @@ object PreInstallSteps {
         for (marker in allMarkers()) {
             MarkerUtils.addMarker(gameDirPath, marker)
         }
+        touchPrefixStamp(container)
     }
 
     fun markStepDone(container: Container, marker: Marker) {
         val gameDir = getGameDir(container) ?: return
         val gameDirPath = gameDir.absolutePath
         MarkerUtils.addMarker(gameDirPath, marker)
+        touchPrefixStamp(container)
+    }
+
+    /**
+     * Pre-install steps write into the Wine prefix (registry, system32), so a recreated
+     * prefix must re-run them even though the game-dir markers survived. The stamp lives
+     * inside the prefix and disappears with it.
+     */
+    private fun prefixStamp(container: Container): File? {
+        val root = container.rootDir?.absolutePath?.takeIf { it.isNotEmpty() } ?: return null
+        val prefix = File(root, ".wine")
+        if (!prefix.isDirectory) return null
+        return File(prefix, ".gamenative_preinstall_done")
+    }
+
+    private fun markersStale(
+        container: Container,
+        containerVariantChanged: Boolean,
+        prefixMayNotExistYet: Boolean = false,
+    ): Boolean {
+        if (containerVariantChanged) return true
+        val stamp = prefixStamp(container)
+        if (stamp == null) return prefixMayNotExistYet && container.rootDir?.absolutePath?.isNotEmpty() == true
+        return !stamp.exists()
+    }
+
+    private fun touchPrefixStamp(container: Container) {
+        val stamp = prefixStamp(container) ?: return
+        runCatching { stamp.createNewFile() }
     }
 
     private fun resetMarkers(gameDirPath: String) {
@@ -106,7 +150,7 @@ object PreInstallSteps {
         return "wine explorer /desktop=shell,$screenInfo $wrapped"
     }
 
-    private fun getGameDir(container: Container): File? {
+    internal fun getGameDir(container: Container): File? {
         for (drive in Container.drivesIterator(container.drives)) {
             if (drive[0].equals("A", ignoreCase = true)) return File(drive[1])
         }

@@ -64,8 +64,8 @@ android {
         buildConfigField("boolean", "XR_BUILD", "false")
         buildConfigField("boolean", "MODERN_XR", "false")
 
-        versionCode = 20
-        versionName = "1.0.6"
+        versionCode = 24
+        versionName = "1.0"
 
         buildConfigField("boolean", "GOLD", "false")
         fun secret(name: String) =
@@ -73,6 +73,7 @@ android {
 
         buildConfigField("String", "POSTHOG_API_KEY", "\"${secret("POSTHOG_API_KEY")}\"")
         buildConfigField("String", "POSTHOG_HOST",  "\"${secret("POSTHOG_HOST")}\"")
+        buildConfigField("String", "REVENUECAT_API_KEY", "\"${secret("REVENUECAT_API_KEY").ifEmpty { "goog_iCoffJTvTFYjqalcgCdtXDErPQa" }}\"")
         buildConfigField("String", "STEAMGRIDDB_API_KEY", "\"${secret("STEAMGRIDDB_API_KEY")}\"")
         buildConfigField("String", "CLOUD_PROJECT_NUMBER", "\"${secret("CLOUD_PROJECT_NUMBER")}\"")
         val iconValue = "@mipmap/ic_launcher"
@@ -229,6 +230,10 @@ android {
     testOptions {
         unitTests {
             isIncludeAndroidResources = true
+            all {
+                it.maxHeapSize = "4g"
+                it.testLogging { events("started", "failed") }
+            }
         }
     }
 
@@ -250,12 +255,14 @@ android {
         }
         getByName("legacyXr") {
             java.srcDir("src/nonXr/java")
-            manifest.srcFile("src/legacy/AndroidManifest.xml")
+            // Superset of src/legacy/AndroidManifest.xml plus the immersive VR entries —
+            // keep the shared parts in sync with that file.
+            manifest.srcFile("src/legacyXr/AndroidManifest.xml")
             assets {
                 srcDirs("src/legacy/assets", "src/main/assets")
             }
             jniLibs {
-                srcDirs("src/legacy/jniLibs")
+                srcDirs("src/legacy/jniLibs", "src/legacyXr/jniLibs")
             }
         }
         getByName("modern") {
@@ -269,7 +276,7 @@ android {
                 srcDirs("src/modern/assets", "src/main/assets")
             }
             jniLibs {
-                srcDirs("src/modern/jniLibs")
+                setSrcDirs(listOf("src/modern/jniLibs", "src/modernXr/jniLibs"))
             }
         }
         getByName("debug") {
@@ -280,6 +287,76 @@ android {
     kotlinter {
         ignoreFormatFailures  = false
     }
+
+    val hostCanRunXrPayloadScripts = System.getProperty("os.name").startsWith("Windows")
+
+    tasks.register<Exec>("buildModernXrNative") {
+        enabled = hostCanRunXrPayloadScripts
+        commandLine(
+            "powershell",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+            rootProject.file("tools/build-xr-native.ps1").absolutePath,
+        )
+    }
+
+    tasks.register<Exec>("buildWindowsXrRuntime") {
+        enabled = hostCanRunXrPayloadScripts
+        commandLine(
+            "powershell",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+            rootProject.file("tools/build-windows-xr-runtime.ps1").absolutePath,
+        )
+    }
+
+    tasks.register<Exec>("stageWineXrBridge") {
+        enabled = hostCanRunXrPayloadScripts
+        dependsOn("buildModernXrNative")
+        val companion = providers.environmentVariable("GAMENATIVE_WINE_XR_BRIDGE")
+        doFirst {
+            check(companion.isPresent) { "GAMENATIVE_WINE_XR_BRIDGE must point to the ARM64X Wine builtin companion" }
+        }
+        commandLine(
+            "powershell",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+            rootProject.file("tools/stage-wine-xr-bridge.ps1").absolutePath,
+            "-CompanionPath",
+            companion.getOrElse(""),
+        )
+    }
+
+    tasks.register<Exec>("stageOpenComposite") {
+        enabled = hostCanRunXrPayloadScripts
+        commandLine(
+            "powershell",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+            rootProject.file("tools/stage-opencomposite.ps1").absolutePath,
+        )
+    }
+
+    tasks.register<Exec>("verifyModernXrPayload") {
+        enabled = hostCanRunXrPayloadScripts
+        dependsOn("buildModernXrNative", "buildWindowsXrRuntime", "stageWineXrBridge", "stageOpenComposite")
+        commandLine(
+            "powershell",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+            rootProject.file("tools/verify-xr-payload.ps1").absolutePath,
+        )
+    }
+
+    tasks.register("prepareModernXrPayload") {
+        dependsOn("verifyModernXrPayload")
+    }
+
 
     // externalNativeBuild {
     //   cmake {
@@ -342,6 +419,7 @@ dependencies {
 
     // Chrome Custom Tabs for GOG OAuth
     implementation("androidx.browser:browser:1.8.0")
+    implementation("com.revenuecat.purchases:purchases:10.15.1")
     implementation("androidx.documentfile:documentfile:1.0.1")
 
     // JavaSteam
@@ -373,6 +451,7 @@ dependencies {
     implementation(libs.libarchive.android)
     implementation(libs.zstd.jni) { artifact { type = "aar" } }
     implementation(libs.xz)
+    implementation(libs.jzlib)
 
     // Jetpack Compose
     implementation(platform(libs.androidx.compose.bom))
@@ -412,6 +491,7 @@ dependencies {
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(libs.androidx.junit)
+    androidTestImplementation(libs.androidx.room.testing)
     androidTestImplementation(libs.androidx.runner)
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.test.manifest)

@@ -77,11 +77,6 @@ abstract class PerformanceDriver {
     open fun stop() {}
 
     /**
-     * Reset the performance driver
-     */
-    open fun reset() {}
-
-    /**
      * Begin a batch update session.
      * For PServerDriver, this starts collecting commands to execute in a single call.
      * For SamsungDriver, this is a no-op as CustomParams already handles batching.
@@ -185,7 +180,7 @@ abstract class PerformanceDriver {
         // Return a dummy Balanced profile for devices without driver support
         return PowerProfile(
             enableAutoTuning = false,
-            enableAdaptiveFpsCap = false,
+            adaptiveFpsCapEnabled = false,
             enableGamePinning = false,
             name = PerformancePreset.BALANCED.displayName,
             governor = CpuGovernor.SCHEDUTIL,
@@ -224,13 +219,4 @@ abstract class PerformanceDriver {
      * Set maximum RAM bus performance level
      */
     open fun setMaxBusLevel(level: Int): Boolean = false
-
-    // ========================================
-    // Utility functions
-    // ========================================
-
-    /**
-     * Read File using driver
-     */
-    open fun readFile(path: String): String? = null
 }
