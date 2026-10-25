@@ -490,7 +490,7 @@ fun PluviaMain(
             val appVersionCode = BuildConfig.VERSION_CODE
             val serverVersionCode = checkedUpdateInfo.versionCode
             Timber.i("Update check: app versionCode=$appVersionCode, server versionCode=$serverVersionCode")
-            if (appVersionCode < serverVersionCode) {
+            if (false && appVersionCode < serverVersionCode) {
                 updateInfo = checkedUpdateInfo
                 viewModel.setUpdateInfo(checkedUpdateInfo)
             }
