@@ -61,12 +61,12 @@ class WinComponentInstallTest {
 
     @Test
     fun appliedValueDropsAFailedComponentWhosePreviousValueMatchesTheRequest() {
-        val fallback = "direct3d=1,directsound=1,directinput8=0,directinput=0,directmusic=1,directshow=1,directplay=1,vcrun2010=1,wmdecoder=1,opengl=0"
+        val fallback = "direct3d=1,directsound=1,directinput8=0,directinput=0,directmusic=1,directshow=1,directplay=1,vcrun2010=1,wmdecoder=1,opengl=1"
 
         val applied = WinComponentInstall.appliedValue(fallback + ",vcrun2005=1", fallback, setOf("vcrun2010", "vcrun2005"))
 
         assertEquals(
-            "direct3d=1,directsound=1,directinput8=0,directinput=0,directmusic=1,directshow=1,directplay=1,wmdecoder=1,opengl=0",
+            "direct3d=1,directsound=1,directinput8=0,directinput=0,directmusic=1,directshow=1,directplay=1,wmdecoder=1,opengl=1",
             applied,
         )
     }
