@@ -6,6 +6,7 @@ import app.gamenative.BuildConfig
 import app.gamenative.MainActivity
 import app.gamenative.PrefManager
 import app.gamenative.data.GameSource
+import app.gamenative.display.GamescopeSettings
 import app.gamenative.enums.Marker
 import app.gamenative.inputcontrols.ControlProfileService
 import app.gamenative.service.SteamService
@@ -51,7 +52,7 @@ object ContainerUtils {
         // Override default driver and DXVK version based on Turnip capability
         if (GPUInformation.isTurnipCapable(context)) {
             DefaultVersion.VARIANT = Container.BIONIC
-            DefaultVersion.WINE_VERSION = "proton-11.0-2-arm64ec-8"
+            DefaultVersion.WINE_VERSION = "proton-11.0-2-arm64ec-9"
             DefaultVersion.DEFAULT_GRAPHICS_DRIVER = "Wrapper"
             DefaultVersion.DXVK = if (GPUInformation.isAdreno6xx(context)) "1.11.1-sarek" else "2.4.1-gplasync"
             DefaultVersion.VKD3D = "2.14.1"
@@ -63,7 +64,7 @@ object ContainerUtils {
             DefaultVersion.ASYNC_CACHE = "1"
         } else if (GPUInformation.isAdrenoA12(context)) {
             DefaultVersion.VARIANT = Container.BIONIC
-            DefaultVersion.WINE_VERSION = "proton-11.0-2-arm64ec-8"
+            DefaultVersion.WINE_VERSION = "proton-11.0-2-arm64ec-9"
             DefaultVersion.DEFAULT_GRAPHICS_DRIVER = "Wrapper"
             DefaultVersion.DXVK = "2.4.1-gplasync"
             DefaultVersion.VKD3D = "2.14.1"
@@ -72,7 +73,7 @@ object ContainerUtils {
             DefaultVersion.ASYNC_CACHE = "1"
         } else if (GPUInformation.isAdreno8EliteGen5(context)) {
             DefaultVersion.VARIANT = Container.BIONIC
-            DefaultVersion.WINE_VERSION = "proton-11.0-2-arm64ec-8"
+            DefaultVersion.WINE_VERSION = "proton-11.0-2-arm64ec-9"
             DefaultVersion.DEFAULT_GRAPHICS_DRIVER = "Wrapper"
             DefaultVersion.DXVK = "2.4.1-gplasync"
             DefaultVersion.VKD3D = "2.14.1"
@@ -81,7 +82,7 @@ object ContainerUtils {
             DefaultVersion.ASYNC_CACHE = "1"
         } else if (GPUInformation.isAdreno8Elite(context)) {
             DefaultVersion.VARIANT = Container.BIONIC
-            DefaultVersion.WINE_VERSION = "proton-11.0-2-arm64ec-8"
+            DefaultVersion.WINE_VERSION = "proton-11.0-2-arm64ec-9"
             DefaultVersion.DEFAULT_GRAPHICS_DRIVER = "Wrapper"
             DefaultVersion.DXVK = "2.4.1-gplasync"
             DefaultVersion.VKD3D = "2.14.1"
@@ -90,7 +91,7 @@ object ContainerUtils {
             DefaultVersion.ASYNC_CACHE = "1"
         } else {
             DefaultVersion.VARIANT = Container.BIONIC
-            DefaultVersion.WINE_VERSION = "proton-11.0-2-arm64ec-8"
+            DefaultVersion.WINE_VERSION = "proton-11.0-2-arm64ec-9"
             DefaultVersion.DEFAULT_GRAPHICS_DRIVER =
                 if (GPUInformation.isAdrenoGPU(context)) "Wrapper" else "Wrapper-gamenative"
             DefaultVersion.DXVK = "async-1.10.3"
@@ -392,6 +393,10 @@ object ContainerUtils {
             strictShaderMath = strictShaderMath,
             useDRI3 = container.isUseDRI3(),
             hdrEnabled = container.isHdrEnabled(),
+            gamescopeOutputResolution = container.getExtra(
+                GamescopeSettings.EXTRA_OUTPUT_RESOLUTION,
+                GamescopeSettings.OUTPUT_RESOLUTION_DEFAULT,
+            ),
             videoMemorySize = videoMemorySize,
             mouseWarpOverride = mouseWarpOverride,
             sharpnessEffect = container.getExtra("sharpnessEffect", "None"),
@@ -603,6 +608,7 @@ object ContainerUtils {
             container.setNeedsUnpacking(true)
         }
         container.putExtra("sharpnessEffect", containerData.sharpnessEffect)
+        container.putExtra(GamescopeSettings.EXTRA_OUTPUT_RESOLUTION, containerData.gamescopeOutputResolution)
         container.putExtra("sharpnessLevel", containerData.sharpnessLevel.toString())
         container.putExtra("sharpnessDenoise", containerData.sharpnessDenoise.toString())
         container.putExtra("vibrationIntensity", containerData.vibrationIntensity.coerceIn(0, 100).toString())
