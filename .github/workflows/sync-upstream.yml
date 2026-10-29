@@ -37,14 +37,28 @@ jobs:
             exit 0
           fi
 
+          BASE=$(git rev-parse HEAD)
           BRANCH="sync/upstream-$(date +%Y%m%d)"
           git checkout -b "$BRANCH"
 
           if git merge --no-edit upstream/master; then
             git push origin "$BRANCH"
+
+            PATTERN='(^|/)(GraphicsTab|LsfgVkManager|ContainerData|PluviaMain)\.kt$'
+            TOTAL=$(git diff --name-only "$BASE" HEAD | wc -l)
+            HITS=$(git diff --numstat "$BASE" HEAD | awk '{print $1" "$2" "$3}' | grep -E "$PATTERN" || true)
+
+            if [ -z "$HITS" ]; then
+              TITLE="Sync with official ($(date +%Y-%m-%d))"
+              BODY="Safe: none of your 4 protected files are changed. Files changed in total: $TOTAL. No conflicts."
+            else
+              LIST=$(echo "$HITS" | awk '{print "- " $3 " (+" $1 " / -" $2 ")"}')
+              TITLE="Sync with official ($(date +%Y-%m-%d)) - PROTECTED FILES CHANGED"
+              BODY=$(printf 'WARNING: this PR changes your protected files. Check Files changed before merging.\n\n%s\n\nFiles changed in total: %s. No conflicts.' "$LIST" "$TOTAL")
+            fi
+
             gh pr create --repo "$GITHUB_REPOSITORY" --base master --head "$BRANCH" \
-              --title "Sync with official ($(date +%Y-%m-%d))" \
-              --body "Clean merge, no conflicts. Check Files changed (GraphicsTab.kt, LsfgVkManager.kt, ContainerData.kt, PluviaMain.kt) before merging."
+              --title "$TITLE" --body "$BODY"
           else
             git merge --abort
             gh issue create --repo "$GITHUB_REPOSITORY" \
