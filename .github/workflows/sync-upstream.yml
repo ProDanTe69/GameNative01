@@ -1,0 +1,48 @@
+name: Sync upstream
+
+on:
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check and merge upstream
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote add upstream https://github.com/utkarshdalal/GameNative.git
+          git fetch upstream master
+
+          if [ -z "$(git log --oneline HEAD..upstream/master)" ]; then
+            echo "Already up to date"
+            exit 0
+          fi
+
+          BRANCH="sync/upstream-$(date +%Y%m%d)"
+          git checkout -b "$BRANCH"
+
+          if git merge --no-edit upstream/master; then
+            git push origin "$BRANCH"
+            gh pr create --repo "$GITHUB_REPOSITORY" --base master --head "$BRANCH" \
+              --title "Sync with official ($(date +%Y-%m-%d))" \
+              --body "Clean merge, no conflicts. Check Files changed (GraphicsTab.kt, LsfgVkManager.kt, ContainerData.kt, PluviaMain.kt) before merging."
+          else
+            git merge --abort
+            gh issue create --repo "$GITHUB_REPOSITORY" \
+              --title "Upstream sync has conflicts ($(date +%Y-%m-%d))" \
+              --body "Official has new commits that conflict with your mods. Merge manually using the update guide."
+          fi
