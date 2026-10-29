@@ -32,6 +32,11 @@ jobs:
             exit 0
           fi
 
+          if [ "$(gh pr list --repo "$GITHUB_REPOSITORY" --state open --search 'Sync with official in:title' --json number --jq length)" != "0" ]; then
+            echo "A sync PR is already open"
+            exit 0
+          fi
+
           BRANCH="sync/upstream-$(date +%Y%m%d)"
           git checkout -b "$BRANCH"
 
