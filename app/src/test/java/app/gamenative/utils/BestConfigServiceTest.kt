@@ -1205,4 +1205,36 @@ class BestConfigServiceTest {
             )
         }
     }
+
+    @Test
+    fun bestConfigMatch_roundTripsAndReadsLegacyPlainString() {
+        val m = BestConfigService.BestConfigMatch("gpu_family_match", 1234, "Adreno (TM) 740")
+        assertEquals(m, BestConfigService.BestConfigMatch.parse(m.toJson()))
+        assertEquals(BestConfigService.BestConfigMatch("fallback_match"), BestConfigService.BestConfigMatch.parse("fallback_match\n"))
+        assertEquals(BestConfigService.BestConfigMatch("exact_gpu_match"), BestConfigService.BestConfigMatch.parse(BestConfigService.BestConfigMatch("exact_gpu_match").toJson()))
+        assertNull(BestConfigService.BestConfigMatch.parse(""))
+    }
+    @Test
+    fun parseBestConfigResponse_overlayOnlyAnswerWithNullMatchFields() {
+        val json = org.json.JSONObject(
+            """{"bestConfig":{"dxwrapper":"dxvk","envVars":"A=1"},"matchType":"fallback_match","matchedGpu":null,"matchedDeviceId":null,"matchedStore":null}""",
+        )
+        val parsed = BestConfigService.parseBestConfigResponse(json, "steam")
+        assertEquals("fallback_match", parsed.matchType)
+        assertEquals("", parsed.matchedGpu)
+        assertEquals(null, parsed.matchedDeviceId)
+        assertEquals("steam", parsed.matchedStore)
+        assertEquals("dxvk", parsed.bestConfig["dxwrapper"]?.toString()?.trim('"'))
+    }
+
+    @Test
+    fun parseBestConfigResponse_learnedAnswerKeepsMatchFields() {
+        val json = org.json.JSONObject(
+            """{"bestConfig":{"dxwrapper":"dxvk"},"matchType":"exact_gpu_match","matchedGpu":"Mali-G57 MC2","matchedDeviceId":7929}""",
+        )
+        val parsed = BestConfigService.parseBestConfigResponse(json, "steam")
+        assertEquals("Mali-G57 MC2", parsed.matchedGpu)
+        assertEquals(7929, parsed.matchedDeviceId)
+    }
+
 }
