@@ -33,12 +33,14 @@ object PerformanceMetricsCollector {
     private const val MAX_LOG_BYTES = 20L * 1024L * 1024L
     private const val MAX_SESSION_FILES = 5
     private const val DEFAULT_REFRESH_RATE = 60f
+    private const val THERMAL_EVERY_N_SAMPLES = 20
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var samplingJob: Job? = null
 
     private val cpuSampler = CpuUsageSampler()
-    private val gpuSampler = GpuUsageSampler()
+    private val gpuSampler = GpuUsageSampler(publishSource = true)
+    private val coreSampler = CoreLoadSampler()
 
     private val frameScratch = LongArray(FrameTimeRing.capacity())
     private val deltaScratch = LongArray(FrameTimeRing.capacity())
@@ -46,6 +48,7 @@ object PerformanceMetricsCollector {
     private val sessionLog = JsonlSessionLog(TAG, "metrics-", MAX_LOG_BYTES, MAX_SESSION_FILES)
     private var sampleCount = 0L
     private var displayRefreshRate = DEFAULT_REFRESH_RATE
+    private var appContext: Context? = null
 
     @Volatile
     private var paused = false
@@ -54,17 +57,42 @@ object PerformanceMetricsCollector {
     var isRunning: Boolean = false
         private set
 
+    /**
+     * Latest reading of the session's single GPU usage sampler; null while the device
+     * gives no valid value. Other consumers read this instead of sampling the node.
+     */
+    @Volatile
+    var latestGpuUsage: GpuUsageReading? = null
+        private set
+
+    /** Load of the busiest core in the last cycle; null while /proc/stat gives no per-core value. */
+    @Volatile
+    var latestCoreMaxPercent: Int? = null
+        private set
+
+    /** Refresh rate of the default display, read at session start. */
+    val refreshRateHz: Float
+        get() = displayRefreshRate
+
     fun start(context: Context, sessionStartMillis: Long = System.currentTimeMillis()) {
         if (isRunning) return
 
         val appContext = context.applicationContext
+        this.appContext = appContext
+        ThermalHeadroom.reset()
+        coreSampler.reset()
+        latestCoreMaxPercent = null
         displayRefreshRate = readDisplayRefreshRate(appContext)
+        PowerTelemetry.attachBattery(appContext)
         cpuSampler.reset()
         gpuSampler.reset()
+        latestGpuUsage = null
+        MaliGpuCounters.attach(appContext)
         sampleCount = 0L
         paused = false
         FrameTimeRing.start()
         PowerTelemetry.start()
+        SessionProcessTelemetry.start(appContext)
         openLog(appContext, sessionStartMillis)
 
         val gpuPaths = SystemMetricsSources.gpuUsagePaths()
@@ -99,9 +127,12 @@ object PerformanceMetricsCollector {
         samplingJob?.cancel()
         samplingJob = null
         FrameTimeRing.stop()
+        SessionProcessTelemetry.stop()
         closeLog()
+        latestGpuUsage = null
         PowerManager.latestMetrics = null
         Timber.tag(TAG).i("Collector stopped after %d samples", sampleCount)
+        MaliGpuCounters.close()
     }
 
     fun pause() {
@@ -114,6 +145,7 @@ object PerformanceMetricsCollector {
         if (!isRunning || !paused) return
         cpuSampler.reset()
         gpuSampler.reset()
+        coreSampler.reset()
         paused = false
         Timber.tag(TAG).i("Collector resumed")
     }
@@ -131,6 +163,33 @@ object PerformanceMetricsCollector {
 
         val cpu = cpuSampler.sample()
         val gpu = gpuSampler.sample()
+        latestGpuUsage = gpu
+        val cpuTemp = SystemMetricsSources.readTemperature(SystemMetricsSources.cpuTempPaths())
+        val gpuTemp = SystemMetricsSources.readTemperature(SystemMetricsSources.gpuTempPaths())
+        PowerTelemetry.noteTemperatureSources(cpuTemp?.path, gpuTemp?.path)
+        // Every 10 s: the headroom API rate-limits to one call a second, and status is
+        // sampled on the same cadence.
+        if (sampleCount % THERMAL_EVERY_N_SAMPLES == 0L) {
+            appContext?.let { PowerTelemetry.recordThermal(ThermalHeadroom.read(it), ThermalHeadroom.status(it)) }
+        }
+        val coreMax = coreSampler.sample()
+        latestCoreMaxPercent = coreMax
+        PowerTelemetry.noteBottleneck(
+            BottleneckClassifier.classify(
+                BottleneckInput(
+                    fps = frameStats.fps,
+                    frameMs = if (frameStats.fps > 0f) 1000f / frameStats.fps else 0f,
+                    fpsCap = PowerManager.targetFps,
+                    vsyncHz = displayRefreshRate,
+                    cpuTotalPct = cpu?.percent?.toFloat(),
+                    coreMaxPct = coreMax?.toFloat(),
+                    gpuPct = gpu?.percent?.toFloat(),
+                    gpuFrameMs = GpuFrameTime.current(),
+                    headroom = ThermalHeadroom.latest,
+                    thermalStatus = ThermalHeadroom.latestStatus,
+                ),
+            ),
+        )
 
         val snapshot = MetricsSnapshot(
             timestampMs = System.currentTimeMillis(),
@@ -143,12 +202,14 @@ object PerformanceMetricsCollector {
             cpuUsagePercent = cpu?.percent?.toFloat(),
             cpuUsageSource = cpu?.source ?: CpuUsageSource.UNAVAILABLE,
             gpuUsagePercent = gpu?.percent?.toFloat(),
-            cpuTempC = SystemMetricsSources.readTemperatureC(SystemMetricsSources.cpuTempPaths()),
-            gpuTempC = SystemMetricsSources.readTemperatureC(SystemMetricsSources.gpuTempPaths()),
+            cpuTempC = cpuTemp?.celsius,
+            gpuTempC = gpuTemp?.celsius,
+            thermalHeadroom = ThermalHeadroom.latest,
         )
 
         publish(snapshot)
-        runCatching { PowerTelemetry.record(snapshot) }
+        runCatching { PowerTelemetry.record(snapshot, cpu) }
+        runCatching { SessionProcessTelemetry.tick(PowerTelemetry.currentBucket()) }
         appendLog(snapshot)
 
         sampleCount++
@@ -173,6 +234,7 @@ object PerformanceMetricsCollector {
         PowerManager.currentFps = snapshot.fps
         PowerManager.currentCpuUsage = snapshot.cpuUsagePercent ?: 0f
         PowerManager.currentGpuUsage = snapshot.gpuUsagePercent ?: 0f
+        PowerManager.gpuUsageKnown = snapshot.gpuUsagePercent != null
     }
 
     private fun slowFrameThresholdNs(): Long {
@@ -231,5 +293,27 @@ object PerformanceMetricsCollector {
 
     private fun closeLog() {
         sessionLog.close()
+    }
+}
+
+/**
+ * GPU usage for consumers other than the collector (HUD, debug-report sampler).
+ * While the collector runs its reading is reused so the usage node has a single
+ * reader; otherwise this falls back to a private, non-publishing sampler.
+ */
+class SharedGpuUsage {
+    private val fallback = GpuUsageSampler()
+    private var usedCollector = true
+
+    fun read(): GpuUsageReading? {
+        if (PerformanceMetricsCollector.isRunning) {
+            usedCollector = true
+            return PerformanceMetricsCollector.latestGpuUsage
+        }
+        if (usedCollector) {
+            fallback.reset()
+            usedCollector = false
+        }
+        return fallback.sample()
     }
 }

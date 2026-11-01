@@ -140,10 +140,12 @@ import app.gamenative.ui.data.PerformanceHudConfig
 import app.gamenative.ui.data.XServerState
 import app.gamenative.ui.widget.PerformanceHudView
 import app.gamenative.utils.AssetUtils
+import app.gamenative.utils.AppExitRecorder
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.downloader.CoreDriverDownloader
 import app.gamenative.utils.CustomGameScanner
 import app.gamenative.utils.DebugReportUtils
+import app.gamenative.utils.GameSessionId
 import app.gamenative.utils.DebugRunParams
 import app.gamenative.utils.DebugRunParamsHolder
 import app.gamenative.utils.ExecutableSelectionUtils
@@ -543,6 +545,9 @@ fun XServerScreen(
     LaunchedEffect(appId) {
         isExiting.set(false)
         runCatching { windowActivity.start(context) }
+        withContext(Dispatchers.IO) {
+            runCatching { AppExitRecorder.markSessionStart(context, ContainerUtils.resolveGameName(appId)) }
+        }
     }
 
     val container = remember(appId) {
@@ -550,6 +555,7 @@ fun XServerScreen(
     }
     val ui = remember { XServerScreenState(container, context) }
     val activity = remember(context) { BrightnessManager.findActivity(context) }
+    LaunchedEffect(appId) { GameSessionId.bind() }
 
     DisposableEffect(activity) {
         if (activity == null) return@DisposableEffect onDispose { }
@@ -5378,6 +5384,12 @@ private fun exit(
         return
     }
 
+    // Before container_config is read so the id rides into game_sessions and the rating payload.
+    GameSessionId.active()?.let { uuid ->
+        container.putSessionMetadata("session_uuid", uuid)
+        container.saveData()
+    }
+
     PerfSampler.halt()
 
     val exitProperties = mapOf(
@@ -5387,6 +5399,9 @@ private fun exit(
         "avg_fps" to (frameRating?.avgFPS ?: 0.0),
         "container_config" to container.containerJson,
     ) + runCatching {
+        PluviaApp.xServerView?.getxServer()?.effectiveScreenInfo
+            ?.let { mapOf("render_w" to it.width.toInt(), "render_h" to it.height.toInt()) }
+    }.getOrNull().orEmpty() + runCatching {
         SessionReport.exitProperties(frameRating?.context ?: PluviaApp.xServerView?.context, frameRating, windowActivity, container, reason)
     }.getOrElse { emptyMap() } + runCatching {
         GameCompatibilityService.badgeProperties(ContainerUtils.resolveGameName(appId))
@@ -5396,6 +5411,7 @@ private fun exit(
         properties = exitProperties,
     )
     CoroutineScope(Dispatchers.IO).launch { SessionReport.recordRun(container, exitProperties) }
+    (frameRating?.context ?: PluviaApp.xServerView?.context)?.let { ctx -> runCatching { AppExitRecorder.markSessionEnd(ctx) } }
     runCatching { windowActivity.stop() }
 
     // Store session data in container metadata
@@ -5405,6 +5421,7 @@ private fun exit(
         container.putSessionMetadata("total_frames", rating.totalFrames)
         container.saveData()
     }
+    GameSessionId.end()
 
     // only needed in exit() — OS reclaims on process death, so onDestroy fallback skips this
     try {
