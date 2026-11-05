@@ -113,6 +113,7 @@ import java.util.EnumSet
 import app.gamenative.externaldisplay.ExternalDisplayInputController
 import app.gamenative.externaldisplay.ExternalDisplaySwapController
 import app.gamenative.externaldisplay.SwapInputOverlayView
+import app.gamenative.powercontrol.ContainerAffinity
 import app.gamenative.powercontrol.PowerManager
 import app.gamenative.service.AchievementWatcher
 import app.gamenative.service.SteamHostAchievementPoller
@@ -2568,6 +2569,15 @@ fun XServerScreen(
                             // Autostart performance driver after environment is set up
                             PowerManager.autoStart(container.rootDir)
 
+                            // Without the in-app X server no window maps here, so the container
+                            // CPU list goes out over the winhandler on the first game content.
+                            if (sessionDisplay == SessionDisplay.GAMESCOPE) {
+                                val handler = getxServer().winHandler
+                                android.os.Handler(android.os.Looper.getMainLooper()).post {
+                                    ContainerAffinity.arm(handler, taskAffinityMask, taskAffinityMaskWoW64)
+                                }
+                            }
+
                             if (debugRun) {
                                 PerfSampler.start(
                                     context,
@@ -3027,6 +3037,14 @@ fun XServerScreen(
                 // upcall ticks this widget instead — register it with the integration object that owns that
                 // upcall.
                 GameNativeDrm.setFrameRating(ui.frameRating)
+                // The game's window maps on gamescope's Xwayland, never on this X server, so the
+                // daemon's published frames are what says the game is showing content (see
+                // GameNativeDrm.GAME_CONTENT_FRAMES); record it as the game's window for game_exited.
+                val exeName = runCatching { Paths.get(container.executablePath).fileName?.toString() }.getOrNull().orEmpty()
+                GameNativeDrm.gameContentListener = {
+                    val rating = ui.frameRating
+                    runCatching { windowActivity.onGamescopeContent(exeName, rating?.totalFrames ?: 0L, rating?.activeMs ?: 0L) }
+                }
             }
 
             if (ui.isPerformanceHudEnabled) {
@@ -3071,7 +3089,9 @@ fun XServerScreen(
 
             // FrameRating teardown (gamescope)
             if (!isX11Display) {
+                GameNativeDrm.gameContentListener = null
                 GameNativeDrm.setFrameRating(null)
+                ContainerAffinity.disarm()
             }
 
             // A view released without exit() (the activity-destroyed fallback, a restart) still ends
@@ -5463,6 +5483,7 @@ private fun exit(
     GameSessionId.end()
 
     // only needed in exit() — OS reclaims on process death, so onDestroy fallback skips this
+    ContainerAffinity.disarm()
     try {
         winHandler?.stop()
     } catch (e: Exception) {
