@@ -409,8 +409,7 @@ object ContainerUtils {
             vibrationIntensity = (container.getExtra("vibrationIntensity", "100").toIntOrNull() ?: 100).coerceIn(0, 100),
             // LSFG Vulkan frame generation
             lsfgEnabled = container.getExtra(LsfgVkManager.EXTRA_ARMED, "false").toBoolean(),
-            windowsVrEnabled = container.getExtra("windowsVrEnabled", "false").toBoolean(),
-            openCompositeEnabled = container.getExtra("windowsVrOpenCompositeEnabled", "false").toBoolean(),
+            lsfgCustomDllPath = container.getExtra(LsfgVkManager.EXTRA_CUSTOM_DLL_PATH, ""),
         )
     }
 
@@ -620,8 +619,7 @@ object ContainerUtils {
         container.putExtra("vibrationIntensity", containerData.vibrationIntensity.coerceIn(0, 100).toString())
         // LSFG Vulkan frame generation
         container.putExtra(LsfgVkManager.EXTRA_ARMED, containerData.lsfgEnabled.toString())
-        container.putExtra("windowsVrEnabled", containerData.windowsVrEnabled.toString())
-        container.putExtra("windowsVrOpenCompositeEnabled", containerData.openCompositeEnabled.toString())
+        container.putExtra(LsfgVkManager.EXTRA_CUSTOM_DLL_PATH, containerData.lsfgCustomDllPath)
         try {
             container.language = containerData.language
         } catch (e: Exception) {
