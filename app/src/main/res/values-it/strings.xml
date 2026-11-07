@@ -1024,6 +1024,10 @@
     <string name="settings_performance_title">Prestazioni</string>
     <string name="settings_performance_power_control_title">Gestione energetica</string>
     <string name="settings_performance_power_control_subtitle">Abilita la gestione energetica in gioco per impostazione predefinita (attiva sui dispositivi testati: AYN Odin 3, Retroid Pocket 6/Nova)</string>
+    <string name="settings_performance_shared_shader_cache_title">Carica le cache degli shader</string>
+    <string name="settings_performance_shared_shader_cache_subtitle">Condividi con gli altri giocatori gli shader registrati mentre giochi. Disattivandolo non vengono nemmeno scaricate le cache condivise che riducono gli scatti</string>
+    <string name="shader_cache_preparing">Preparazione degli shader…</string>
+    <string name="shader_cache_preparing_progress">Preparazione degli shader %1$d%%</string>
 
     <!-- Settings: Emulation Group -->
     <string name="settings_emulation_title">Emulazione</string>
@@ -1176,6 +1180,8 @@
     <string name="settings_emulation_default_config_dialog_title">Config Container Predefinita</string>
     <string name="settings_emulation_auto_apply_known_config_title">Applica automaticamente config nota</string>
     <string name="settings_emulation_auto_apply_known_config_subtitle">Applica automaticamente le impostazioni consigliate per i giochi Steam al primo avvio</string>
+    <string name="settings_emulation_fex_code_cache_title">Cache di codice FEX</string>
+    <string name="settings_emulation_fex_code_cache_subtitle">Condividi quale codice FEX ha tradotto e scarica traduzioni precompilate per avvii più rapidi. Le cache occupano spazio nel prefisso del gioco.</string>
     <string name="settings_emulation_box64_presets_title">Preset Box64</string>
     <string name="settings_emulation_box64_presets_subtitle">Visualizza, modifica e crea preset Box64</string>
     <string name="settings_emulation_driver_manager_title">Gestione Driver</string>
@@ -1835,6 +1841,24 @@
      <string name="steam_save_import_failed">Importazione salvataggi fallita: %s</string>
     <string name="option_import_saves">Importa salvataggi</string>
     <string name="option_export_saves">Esporta salvataggi</string>
+    <string name="option_restore_save_backup">Ripristina backup dei salvataggi</string>
+    <string name="settings_group_cloud_saves">Salvataggi cloud</string>
+    <string name="settings_save_backups_to_keep">Backup dei salvataggi da conservare</string>
+    <string name="settings_save_backups_off">Disattivato</string>
+    <string name="save_backup_restore_dialog_title">Ripristina un backup dei salvataggi</string>
+    <plurals name="save_backup_file_count">
+        <item quantity="one">%1$d file</item>
+        <item quantity="other">%1$d file</item>
+    </plurals>
+    <string name="save_backup_before_sync">Salvataggi locali prima della sincronizzazione cloud</string>
+    <string name="save_backup_size_and_count">%1$s · %2$s</string>
+    <string name="save_backup_before_restore">Prima dell\'ultimo ripristino</string>
+    <string name="save_backup_restore_confirm_title">Ripristinare questo backup?</string>
+    <string name="save_backup_restore_confirm_message">I tuoi salvataggi attuali verranno sostituiti con il backup del %1$s. Prima viene creato un backup dei salvataggi attuali, così potrai annullare.</string>
+    <string name="save_backup_restore_button">Ripristina</string>
+    <string name="save_backup_game_running">Chiudi il gioco prima di ripristinare un backup dei salvataggi</string>
+    <string name="save_backup_restored">Backup dei salvataggi ripristinato</string>
+    <string name="save_backup_restore_failed">Impossibile ripristinare il backup dei salvataggi</string>
     <string name="option_verify_files">Verifica file</string>
     <string name="option_update">Aggiorna</string>
     <string name="option_move_to_external_storage">Sposta su archiviazione esterna</string>

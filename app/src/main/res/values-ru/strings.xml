@@ -1195,6 +1195,8 @@ https://gamenative.app
     <string name="settings_download_speed">Скорость загрузки</string>
     <string name="settings_downloads_title">Загрузки</string>
     <string name="settings_emulation_auto_apply_known_config_subtitle">Автоматически применять рекомендуемые настройки для игр Steam при первом запуске</string>
+	<string name="settings_emulation_fex_code_cache_title">Кэши кода FEX</string>
+	<string name="settings_emulation_fex_code_cache_subtitle">Делитесь тем, какой код перевёл FEX, и загружайте готовые переводы для более быстрого запуска. Кэши занимают место в префиксе игры.</string>
     <string name="settings_emulation_auto_apply_known_config_title">Автоматически применять известную конфигурацию</string>
     <string name="settings_emulation_box64_presets_subtitle">Просмотр, изменение и создание предустановок Box64</string>
     <string name="settings_emulation_box64_presets_title">Предустановки Box64</string>
@@ -1208,6 +1210,10 @@ https://gamenative.app
     <string name="settings_performance_title">Производительность</string>
     <string name="settings_performance_power_control_title">Управление производительностью</string>
     <string name="settings_performance_power_control_subtitle">Включать управление производительностью в игре по умолчанию (включено на протестированных устройствах: AYN Odin 3, Retroid Pocket 6/Nova)</string>
+    <string name="settings_performance_shared_shader_cache_title">Загружать кэш шейдеров</string>
+    <string name="settings_performance_shared_shader_cache_subtitle">Делиться с другими игроками шейдерами, записанными во время игры. Если выключить, общий кэш, уменьшающий подтормаживания, тоже не будет скачиваться</string>
+    <string name="shader_cache_preparing">Подготовка шейдеров…</string>
+    <string name="shader_cache_preparing_progress">Подготовка шейдеров %1$d%%</string>
 
     <string name="settings_emulation_driver_manager_title">Менеджер драйверов</string>
     <string name="settings_emulation_orientations_subtitle">Выберите, какие ориентации можно повернуть во время игры</string>
@@ -1770,6 +1776,26 @@ https://gamenative.app
      <string name="steam_save_import_failed">Не удалось импортировать сохранения: %s</string>
     <string name="option_import_saves">Импортировать сохранения</string>
     <string name="option_export_saves">Экспортировать сохранения</string>
+    <string name="option_restore_save_backup">Восстановить резервную копию сохранений</string>
+    <string name="settings_group_cloud_saves">Облачные сохранения</string>
+    <string name="settings_save_backups_to_keep">Количество сохраняемых резервных копий</string>
+    <string name="settings_save_backups_off">Выкл.</string>
+    <string name="save_backup_restore_dialog_title">Восстановление резервной копии сохранений</string>
+    <plurals name="save_backup_file_count">
+        <item quantity="one">%1$d файл</item>
+        <item quantity="few">%1$d файла</item>
+        <item quantity="many">%1$d файлов</item>
+        <item quantity="other">%1$d файла</item>
+    </plurals>
+    <string name="save_backup_before_sync">Локальные сохранения до облачной синхронизации</string>
+    <string name="save_backup_size_and_count">%1$s · %2$s</string>
+    <string name="save_backup_before_restore">До последнего восстановления</string>
+    <string name="save_backup_restore_confirm_title">Восстановить эту резервную копию?</string>
+    <string name="save_backup_restore_confirm_message">Текущие сохранения будут заменены резервной копией от %1$s. Сначала создаётся резервная копия текущих сохранений, так что это можно отменить.</string>
+    <string name="save_backup_restore_button">Восстановить</string>
+    <string name="save_backup_game_running">Закройте игру перед восстановлением резервной копии сохранений</string>
+    <string name="save_backup_restored">Резервная копия сохранений восстановлена</string>
+    <string name="save_backup_restore_failed">Не удалось восстановить резервную копию сохранений</string>
     <string name="option_verify_files">Проверить файлы</string>
     <string name="option_update">Обновить</string>
     <string name="option_move_to_external_storage">Переместить во внешнее хранилище</string>

@@ -1033,6 +1033,10 @@
     <string name="settings_performance_title">성능</string>
     <string name="settings_performance_power_control_title">성능 제어</string>
     <string name="settings_performance_power_control_subtitle">게임 내 성능 제어를 기본적으로 활성화 (테스트된 기기에서 켜짐: AYN Odin 3, Retroid Pocket 6/Nova)</string>
+    <string name="settings_performance_shared_shader_cache_title">셰이더 캐시 업로드</string>
+    <string name="settings_performance_shared_shader_cache_subtitle">플레이 중 기록된 셰이더를 다른 플레이어와 공유합니다. 끄면 끊김을 줄여 주는 공유 캐시도 다운로드하지 않습니다</string>
+    <string name="shader_cache_preparing">셰이더 준비 중…</string>
+    <string name="shader_cache_preparing_progress">셰이더 준비 중 %1$d%%</string>
 
     <!-- Settings: Emulation Group -->
     <string name="settings_emulation_title">에뮬레이션</string>
@@ -1816,6 +1820,23 @@
      <string name="steam_save_import_failed">세이브 데이터 가져오기 실패: %s</string>
     <string name="option_import_saves">세이브 가져오기</string>
     <string name="option_export_saves">세이브 내보내기</string>
+    <string name="option_restore_save_backup">세이브 백업 복원</string>
+    <string name="settings_group_cloud_saves">클라우드 세이브</string>
+    <string name="settings_save_backups_to_keep">보관할 세이브 백업 수</string>
+    <string name="settings_save_backups_off">끄기</string>
+    <string name="save_backup_restore_dialog_title">세이브 백업 복원</string>
+    <plurals name="save_backup_file_count">
+        <item quantity="other">파일 %1$d개</item>
+    </plurals>
+    <string name="save_backup_before_sync">클라우드 동기화 이전의 로컬 저장 데이터</string>
+    <string name="save_backup_size_and_count">%1$s · %2$s</string>
+    <string name="save_backup_before_restore">마지막 복원 이전</string>
+    <string name="save_backup_restore_confirm_title">이 백업을 복원할까요?</string>
+    <string name="save_backup_restore_confirm_message">현재 세이브가 %1$s 백업으로 대체됩니다. 현재 세이브는 먼저 백업되므로 되돌릴 수 있습니다.</string>
+    <string name="save_backup_restore_button">복원</string>
+    <string name="save_backup_game_running">세이브 백업을 복원하기 전에 게임을 종료하세요</string>
+    <string name="save_backup_restored">세이브 백업을 복원했습니다</string>
+    <string name="save_backup_restore_failed">세이브 백업을 복원하지 못했습니다</string>
     <!-- HLTB (How Long To Beat) -->
     <string name="hltb_main_story">메인 스토리</string>
     <string name="hltb_main_plus_extras">메인 + 추가</string>
@@ -1934,6 +1955,8 @@
     <string name="renderer_present_modes">렌더러 프레젠트 모드</string>
     <string name="settings_emulation_auto_apply_known_config_title">알려진 설정 자동 적용</string>
     <string name="settings_emulation_auto_apply_known_config_subtitle">Steam 게임을 처음 실행할 때 권장 설정을 자동으로 적용합니다</string>
+    <string name="settings_emulation_fex_code_cache_title">FEX 코드 캐시</string>
+    <string name="settings_emulation_fex_code_cache_subtitle">FEX가 변환한 코드를 공유하고 미리 빌드된 변환을 내려받아 더 빠르게 실행합니다. 캐시는 게임 프리픽스의 저장 공간을 사용합니다.</string>
     <string name="download_no_wifi">Wi-Fi 또는 LAN에 연결되어 있지 않습니다</string>
     <string name="download_paused_wifi">다운로드 일시 중지됨 - Wi-Fi 또는 LAN 연결 대기 중</string>
     <string name="main_downloading_entry">%s 다운로드 중</string>

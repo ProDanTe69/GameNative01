@@ -1020,6 +1020,10 @@
     <string name="settings_performance_title">效能</string>
     <string name="settings_performance_power_control_title">效能控制</string>
     <string name="settings_performance_power_control_subtitle">預設啟用遊戲內效能控制（已在測試裝置上啟用：AYN Odin 3、Retroid Pocket 6/Nova）</string>
+    <string name="settings_performance_shared_shader_cache_title">上傳著色器快取</string>
+    <string name="settings_performance_shared_shader_cache_subtitle">將遊玩時記錄的著色器與其他玩家共享。關閉後也不會下載可減少卡頓的共享快取</string>
+    <string name="shader_cache_preparing">正在準備著色器…</string>
+    <string name="shader_cache_preparing_progress">正在準備著色器 %1$d%%</string>
 
     <!-- Settings: Emulation Group -->
     <string name="settings_emulation_title">模擬設定</string>
@@ -1171,6 +1175,8 @@
     <string name="settings_emulation_default_config_dialog_title">預設容器設定</string>
     <string name="settings_emulation_auto_apply_known_config_title">自動套用預設配置</string>
     <string name="settings_emulation_auto_apply_known_config_subtitle">首次執行 Steam 遊戲時，自動載入並套用社群推薦的最佳設定</string>
+	<string name="settings_emulation_fex_code_cache_title">FEX 程式碼快取</string>
+	<string name="settings_emulation_fex_code_cache_subtitle">分享 FEX 翻譯過的程式碼並下載預先編譯的翻譯以加快啟動。快取會佔用遊戲前綴中的儲存空間。</string>
     <string name="settings_emulation_box64_presets_title">Box64 預設集</string>
     <string name="settings_emulation_box64_presets_subtitle">檢視、修改及建立 Box64 預設集</string>
     <string name="settings_emulation_driver_manager_title">驅動程式管理員</string>
@@ -1812,6 +1818,23 @@
      <string name="steam_save_import_failed">匯入存檔失敗：%s</string>
     <string name="option_import_saves">匯入存檔</string>
     <string name="option_export_saves">匯出存檔</string>
+    <string name="option_restore_save_backup">還原存檔備份</string>
+    <string name="settings_group_cloud_saves">雲端存檔</string>
+    <string name="settings_save_backups_to_keep">保留的存檔備份數</string>
+    <string name="settings_save_backups_off">關閉</string>
+    <string name="save_backup_restore_dialog_title">還原存檔備份</string>
+    <plurals name="save_backup_file_count">
+        <item quantity="other">%1$d 個檔案</item>
+    </plurals>
+    <string name="save_backup_before_sync">雲端同步之前的本機存檔</string>
+    <string name="save_backup_size_and_count">%1$s · %2$s</string>
+    <string name="save_backup_before_restore">上次還原之前</string>
+    <string name="save_backup_restore_confirm_title">還原此備份？</string>
+    <string name="save_backup_restore_confirm_message">你目前的存檔將被取代為 %1$s 的備份。目前的存檔會先備份，因此你可以復原此操作。</string>
+    <string name="save_backup_restore_button">還原</string>
+    <string name="save_backup_game_running">請先關閉遊戲再還原存檔備份</string>
+    <string name="save_backup_restored">存檔備份已還原</string>
+    <string name="save_backup_restore_failed">無法還原存檔備份</string>
     <string name="option_export_for_frontend">匯出至前端</string>
     <string name="option_copy_launch_link">複製啟動連結</string>
     <string name="option_open_container">開啟容器</string>
