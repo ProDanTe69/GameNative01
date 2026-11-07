@@ -1,0 +1,108 @@
+name: Sync upstream
+
+on:
+  schedule:
+    - cron: '0 4,10,16,22 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: sync-upstream
+  cancel-in-progress: false
+
+env:
+  UPSTREAM_URL: https://github.com/utkarshdalal/GameNative.git
+  PROTECTED: '(^|/)(GraphicsTab|LsfgVkManager|ContainerData|PluviaMain)\.kt$'
+  SYNC_BRANCH: upstream-sync
+  BACKUP_BRANCH: backup-pre-sync
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          # SYNC_TOKEN (classic PAT, scopes: repo + workflow) lets the push
+          # succeed even when upstream changes .github/workflows/*.
+          token: ${{ secrets.SYNC_TOKEN || github.token }}
+
+      - name: Configure git
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Fetch upstream
+        run: |
+          git remote add upstream "$UPSTREAM_URL" 2>/dev/null || git remote set-url upstream "$UPSTREAM_URL"
+          git fetch upstream --prune
+          UP_BRANCH=$(git remote show upstream | sed -n 's/.*HEAD branch: //p')
+          echo "UP_BRANCH=$UP_BRANCH" >> "$GITHUB_ENV"
+          echo "BASE_BRANCH=${{ github.event.repository.default_branch }}" >> "$GITHUB_ENV"
+
+      - name: Open sync PR
+        env:
+          GH_TOKEN: ${{ secrets.SYNC_TOKEN || github.token }}
+        run: |
+          set -u
+
+          if git merge-base --is-ancestor "upstream/$UP_BRANCH" HEAD; then
+            echo "Already up to date."
+            exit 0
+          fi
+
+          # Safety net: keep a copy of the current master to switch back to.
+          git push --force origin "HEAD:refs/heads/$BACKUP_BRANCH"
+
+          git checkout -B "$SYNC_BRANCH"
+          git merge --no-commit --no-ff "upstream/$UP_BRANCH" || true
+
+          # Protected files: where upstream and you edited the SAME lines, keep YOUR lines.
+          # Upstream's other changes in these files are still merged normally.
+          for f in $(git diff --name-only --diff-filter=U); do
+            if echo "$f" | grep -Eq "$PROTECTED"; then
+              git show ":1:$f" > /tmp/base 2>/dev/null || : > /tmp/base
+              git show ":2:$f" > /tmp/ours
+              git show ":3:$f" > /tmp/theirs
+              git merge-file --ours -p /tmp/ours /tmp/base /tmp/theirs > /tmp/merged || true
+              cp /tmp/merged "$f"
+              git add -- "$f"
+            fi
+          done
+
+          REMAINING=$(git diff --name-only --diff-filter=U)
+
+          if [ -z "$REMAINING" ]; then
+            git commit -m "Merge upstream/$UP_BRANCH (auto-sync)" || true
+            git push --force origin "$SYNC_BRANCH"
+            BODY="Upstream changes merged cleanly (your protected-file lines kept). Review and merge this PR. To undo later, switch back to \`$BACKUP_BRANCH\`."
+          else
+            echo "Conflicts in: $REMAINING"
+            git merge --abort
+            # Head = upstream code, so GitHub shows the "Resolve conflicts" button.
+            git push --force origin "refs/remotes/upstream/$UP_BRANCH:refs/heads/$SYNC_BRANCH"
+            FILES=$(echo "$REMAINING" | sed 's/^/- `/; s/$/`/')
+            BODY=$(printf '%s\n' \
+              "Upstream sync hit merge conflicts." "" \
+              "**Conflicting files:**" "$FILES" "" \
+              "**Resolve on mobile:** open this PR, tap **Resolve conflicts**, fix each file, **Mark as resolved**, **Commit merge**, then merge the PR." "" \
+              "Protected files (GraphicsTab, LsfgVkManager, ContainerData, PluviaMain) were auto-resolved in favor of your lines." "" \
+              "Safety net: branch \`$BACKUP_BRANCH\` holds the previous master.")
+          fi
+
+          EXISTING=$(gh pr list --repo "$GITHUB_REPOSITORY" --head "$SYNC_BRANCH" \
+            --base "$BASE_BRANCH" --state open --json number --jq '.[0].number // empty')
+
+          if [ -n "$EXISTING" ]; then
+            gh pr edit "$EXISTING" --repo "$GITHUB_REPOSITORY" --body "$BODY"
+          else
+            gh pr create --repo "$GITHUB_REPOSITORY" \
+              --base "$BASE_BRANCH" --head "$SYNC_BRANCH" \
+              --title "Upstream sync ($(date -u +%Y-%m-%d))" \
+              --body "$BODY"
+          fi

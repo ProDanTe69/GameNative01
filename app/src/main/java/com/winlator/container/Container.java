@@ -54,7 +54,7 @@ public class Container {
     public static final String DEFAULT_DDRAWRAPPER = "none";
     public static final String DEFAULT_DXWRAPPERCONFIG = "version=" + DefaultVersion.DXVK + ",framerate=0,maxDeviceMemory=0,async=" + DefaultVersion.ASYNC + ",asyncCache=" + DefaultVersion.ASYNC_CACHE + ",vkd3dVersion=" + DefaultVersion.VKD3D + ",vkd3dLevel=12_1" + ",ddrawrapper=" + Container.DEFAULT_DDRAWRAPPER + ",csmt=3" + ",gpuName=NVIDIA GeForce GTX 480" + ",videoMemorySize=2048" + ",strict_shader_math=1" + ",OffscreenRenderingMode=fbo" + ",renderer=gl";;
     public static final String DEFAULT_GRAPHICSDRIVERCONFIG = "vulkanVersion=1.3" + ",version=" + DefaultVersion.WRAPPER + ",blacklistedExtensions=" + ",maxDeviceMemory=0" + ",presentMode=mailbox" + ",syncFrame=0" + ",disablePresentWait=0" + ",resourceType=auto" + ",bcnEmulation=auto" + ",bcnEmulationType=compute" + ",bcnEmulationCache=1" + ",gpuName=Device";
-    public static final String DEFAULT_WINCOMPONENTS = "direct3d=1,directsound=1,directinput8=0,directinput=0,directmusic=0,directshow=0,directplay=0,vcrun2010=1,wmdecoder=1,opengl=0";
+    public static final String DEFAULT_WINCOMPONENTS = "direct3d=1,directsound=1,directinput8=0,directinput=0,directmusic=0,directshow=0,directplay=0,vcrun2010=1,wmdecoder=1,opengl=1";
     /**
      * Wincomponents outside DEFAULT_WINCOMPONENTS that redist detection adds to a container: the
      * vcrun families of RedistInstallerExtractor.FAMILY_MAJOR_VERSIONS, PhysXLayout.COMPONENT and
@@ -62,7 +62,7 @@ public class Container {
      */
     public static final Set<String> REDIST_WINCOMPONENTS = Collections.unmodifiableSet(new LinkedHashSet<>(Arrays.asList(
             "vcrun2005", "vcrun2008", "vcrun2012", "vcrun2013", "vcrun2022", "xaudio", "physx")));
-    public static final String FALLBACK_WINCOMPONENTS = "direct3d=1,directsound=1,directinput8=0,directinput=0,directmusic=1,directshow=1,directplay=1,vcrun2010=1,wmdecoder=1,opengl=0";
+    public static final String FALLBACK_WINCOMPONENTS = "direct3d=1,directsound=1,directinput8=0,directinput=0,directmusic=1,directshow=1,directplay=1,vcrun2010=1,wmdecoder=1,opengl=1";
     public static final String[] MEDIACONV_ENV_VARS = {
             "MEDIACONV_AUDIO_DUMP_FILE=/data/data/app.gamenative/files/imagefs/home/xuser/audio.dmp",
             "MEDIACONV_VIDEO_DUMP_FILE=/data/data/app.gamenative/files/imagefs/home/xuser/video.dmp",

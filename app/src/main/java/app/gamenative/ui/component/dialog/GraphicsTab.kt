@@ -1,21 +1,30 @@
 package app.gamenative.ui.component.dialog
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import app.gamenative.PluviaApp
 import app.gamenative.R
+import app.gamenative.service.SteamService
 import app.gamenative.display.GamescopeSettings
 import app.gamenative.ui.component.settings.SettingsListDropdown
 import app.gamenative.ui.component.settings.SettingsListDropdownSearchable
@@ -30,6 +39,7 @@ import com.winlator.container.Container
 import com.winlator.core.KeyValueSet
 import com.winlator.core.StringUtils
 import com.winlator.core.envvars.EnvVars
+import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 
 @Composable
@@ -620,11 +630,55 @@ private fun DxWrapperSection(state: ContainerConfigState) {
 @Composable
 private fun LsfgSection(state: ContainerConfigState) {
     val config = state.config.value
+    val context = LocalContext.current
     val lsfgSupported = config.containerVariant.equals(Container.BIONIC, ignoreCase = true)
     if (!lsfgSupported) return
 
-    var dllAvailable by rememberSaveable { mutableStateOf(LsfgVkManager.isDllAvailable()) }
+    var dllAvailable by rememberSaveable {
+        mutableStateOf(LsfgVkManager.isDllAvailable() || config.lsfgCustomDllPath.isNotEmpty())
+    }
     val ownsApp = LsfgVkManager.ownsLosslessScaling()
+    var showInstallDialog by rememberSaveable { mutableStateOf(false) }
+    var isInstalling by rememberSaveable { mutableStateOf(false) }
+    var installProgress by rememberSaveable { mutableStateOf(0f) }
+
+    val dllPickerLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.GetContent()
+    ) { uri ->
+        if (uri != null) {
+            try {
+                val destDir = java.io.File(context.filesDir, "lsfg")
+                destDir.mkdirs()
+                val destFile = java.io.File(destDir, "Lossless.dll")
+                context.contentResolver.openInputStream(uri)?.use { input ->
+                    destFile.outputStream().use { output -> input.copyTo(output) }
+                }
+                if (destFile.isFile) {
+                    state.config.value = config.copy(lsfgCustomDllPath = destFile.absolutePath)
+                    dllAvailable = true
+                }
+            } catch (_: Exception) {}
+        }
+    }
+
+    // Poll download progress while installing
+    LaunchedEffect(isInstalling) {
+        while (isInstalling) {
+            val downloads = SteamService.getActiveDownloads()
+            val dlInfo = downloads[LsfgVkManager.LOSSLESS_SCALING_APP_ID]
+            if (dlInfo != null) {
+                installProgress = dlInfo.getProgress()
+                if (!dlInfo.isActive()) {
+                    isInstalling = false
+                    dllAvailable = LsfgVkManager.isDllAvailable()
+                }
+            } else {
+                isInstalling = false
+                dllAvailable = LsfgVkManager.isDllAvailable()
+            }
+            delay(500)
+        }
+    }
 
     SettingsGroup {
         when {
@@ -663,9 +717,17 @@ private fun LsfgSection(state: ContainerConfigState) {
                         }
                     },
                 )
+                OutlinedButton(
+                    onClick = { dllPickerLauncher.launch("*/*") },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 4.dp),
+                ) {
+                    Text(text = stringResource(R.string.lsfg_browse_dll))
+                }
             }
             else -> {
-                // State 3: User doesn't own Lossless Scaling
+                // State 3: User doesn't own Lossless Scaling — offer manual DLL selection
                 SettingsSwitch(
                     colors = settingsTileColorsAlt(),
                     title = { Text(text = stringResource(R.string.lsfg_enable)) },
@@ -673,6 +735,14 @@ private fun LsfgSection(state: ContainerConfigState) {
                     state = false,
                     onCheckedChange = {},
                 )
+                OutlinedButton(
+                    onClick = { dllPickerLauncher.launch("*/*") },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 4.dp),
+                ) {
+                    Text(text = stringResource(R.string.lsfg_browse_dll))
+                }
             }
         }
     }
